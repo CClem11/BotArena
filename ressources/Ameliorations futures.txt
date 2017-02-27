@@ -1,0 +1,15 @@
+des images cool pour le chassis et le canon et projectiles ?
+->changer la hit box ?
+
+(quand mouvement + tir : dispersion augmente) pas pour l'instant
+
+obstacle (creation de map) -> lags ?
+
+ajouter des bandes sonnores pour faire participer d'autres personnes ^^ 
+(explosion, debut du jeu, message encouragement, message d'explication, mort)
+
+explosion graphique
+
+Classes : Beam (sniper), eclaireur, Elastator (rebonds), ninja (invisible, shuriken, corps a corps)
+
+Objets : heal, bouclier, invisible, vitesse
