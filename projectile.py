@@ -1,6 +1,8 @@
+# -*- coding:utf8 -*-
+
 #pour le projectile
 import pygame, threading
-from math import cos, sin, radians
+from math import cos, sin, radians, degrees
 from time import sleep
 from random import randrange
 
@@ -8,8 +10,8 @@ def couleur_aleatoire():
 	return [127*randrange(3) for i in range(3)] # peut etre noir
 
 class Projectile():
-	angle_dispersion = 0 # degrees (INT !)
 	def __init__(self, game_display, position_initiale, angle, vitesse=20):
+
 		#print("projectile creer : angle : {}".format(angle))
 		self.game_display = game_display
 		self.dimension_fenetre = pygame.display.get_surface().get_size()
@@ -18,11 +20,18 @@ class Projectile():
 		self.rayon = 7
 		self.position = (0, 0)
 		self.deplacement = 0
-		if Projectile.angle_dispersion != 0:
-			self.angle += radians(randrange(-Projectile.angle_dispersion, +Projectile.angle_dispersion))
+		
+		self.angle_dispersion = 0 # degrees (INT !)
+		if self.angle_dispersion != 0:
+			self.angle += radians(randrange(-self.angle_dispersion, +self.angle_dispersion))
+			
+		self.img = pygame.image.load("ressources/proj3.png").convert_alpha()
+		#self.img = pygame.image.load("ressources/balle1.png")
+		self.angle_img = 0
 		
 	def move(self):
 		self.deplacement += 1
+		#self.angle_img -= 8
 		x, y = self.position_initiale
 		x = x + int(self.deplacement*self.vitesse*cos(self.angle))
 		y = y + int(self.deplacement*self.vitesse*sin(self.angle))
@@ -36,4 +45,9 @@ class Projectile():
 	
 	def afficher(self):
 		x, y = self.position
-		pygame.draw.circle(self.game_display, self.color, (x, y), self.rayon)
+		pygame.draw.circle(self.game_display, self.color, self.position, self.rayon)
+		# img = pygame.transform.rotate(self.img, self.angle_img)
+		# w, h = pygame.Surface.get_size(img)
+		# x -= w/2
+		# y -= h/2
+		# self.game_display.blit(img, (x, y))

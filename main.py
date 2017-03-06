@@ -1,17 +1,17 @@
-# -*- coding:Utf-8 -*-
+# -*- coding:utf8 -*-
 from robot import *
 from random import randrange
 import socket, sys
 from reception_client import *
 from charger_map import *
+HOST, PORT = "", 35
+mode = input("Choisir le mode (Tapez quelque chose -> Serveur; Entrée -> Client):")
 
-HOST, PORT = '192.168.1.11', 35
-HOST = input("Adresse IP de l'hote :")
-mode = input("Choisir le mode (Tapez quelque chose -> Serveur; Entree -> Client):")
-background = ["bg.jpg", "bg2.jpg", "bg3.jpg", "bg4.jpg", "bg5.jpg"]
-background = background[int(input("Quel image de background ? (entre 0 et {}):".format(len(background)-1)))]
+background = ["bg2.jpg", "bg3.jpg", "bg4.jpg", "bg5.jpg"]
+#background = background[int(input("Quel image de background ? (entre 0 et {}):".format(len(background)-1)))]
+background = background[randrange(len(background))]
 
-class Joueur():
+class Joueur():	
 	def __init__(self, mode=""):
 		self.mode = mode
 		if mode != "test":
@@ -19,11 +19,14 @@ class Joueur():
 			try:
 				if len(mode) > 0:
 					print("Mode Serveur")
+					HOST = socket.gethostbyname(socket.gethostname())
 					self.mysocket.bind((HOST, PORT))
 					self.mysocket.listen(1)
+					print("Ip du serveur :", HOST)
 					print("Attente de connexion...")
 					self.connexion_adversaire, adresse = self.mysocket.accept()
 				else:
+					HOST = input("Adresse IP de l'hote :")
 					print("Mode Client")
 					self.mysocket.connect((HOST, PORT))
 					self.connexion_adversaire = self.mysocket
@@ -32,12 +35,12 @@ class Joueur():
 				print(e)
 				sys.exit()
 
-		self.fps = 70
+		self.fps = 60
 		self.fenetre = (700, 800)
 		
 		self.clock = pygame.time.Clock()
-		#self.game_display = pygame.display.set_mode(self.fenetre)
-		self.game_display = pygame.display.set_mode((1600, 900), pygame.FULLSCREEN)
+		# self.game_display = pygame.display.set_mode(self.fenetre)
+		self.game_display = pygame.display.set_mode((1600, 900),pygame.FULLSCREEN)
 		pygame.display.set_caption("Arene") # title
 		
 		self.robot_joueur = Robot(self.game_display, (150, 150), "Moi")
@@ -48,6 +51,7 @@ class Joueur():
 		#chargement de la map
 		self.map = ouvrir_map(map2)
 		self.img_obstacle = pygame.image.load("ressources/mur.png").convert_alpha()
+		
 		#lancement de la boucle principale
 		self.main()
 	
@@ -65,6 +69,10 @@ class Joueur():
 						robot_cible.toucher()
 						projectiles.remove(projectile)
 		#test entre projectile et obstacles
+		self.collision_map()
+	
+	def collision_map(self):
+		liste_robot = [self.robot_joueur, self.robot_adversaire]
 		for robot in liste_robot:
 			projectiles = robot.get_projectiles()
 			for projectile in projectiles:
@@ -115,7 +123,9 @@ class Joueur():
 						self.robot_joueur.tir()
 						self.tir = True
 					elif event.key == pygame.K_r:
+						self.robot_joueur.ressuciter()
 						self.robot_adversaire.ressuciter()
+						
 					
 				if event.type == pygame.MOUSEBUTTONDOWN:
 					self.robot_joueur.tir()

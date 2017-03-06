@@ -1,3 +1,5 @@
+# -*- coding:utf8 -*-
+
 map1 = "ressources/map1.txt"
 map2 = "ressources/map2.txt"
 

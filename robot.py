@@ -1,14 +1,11 @@
-# -*- coding:Utf-8 -*-
+# -*- coding:utf8 -*-
 import pygame
 from math import acos, degrees, cos, sin, tan, pi
 from random import randrange
 from time import time
 from projectile import *
+from webcam import *
 
-img_chassis = pygame.image.load("ressources/chassis3.png")
-img_canon3 = pygame.image.load("ressources/canon tourelle.png")
-img_chassis_touche = pygame.image.load("ressources/chassis3_touche.png")
-img_chassis_mort = pygame.image.load("ressources/chassis3_mort.png")
 
 
 def angle(p1, p2):
@@ -42,6 +39,17 @@ class Robot():
 		self.temps_rechargement = 0 # secondes
 		self.angle_canon = 0
 		self.rayon = 25
+		self.type_projectile = Projectile
+		#images
+		self.img_chassis = pygame.image.load("ressources/chassis3.png")
+		########
+		self.portrait = Portrait()
+		# self.img_chassis = pygame.image.load("ressources/img.png").convert_alpha()
+		# self.img_chassis = pygame.transform.scale(self.img_chassis, (300, 200))
+		############
+		self.img_canon3 = pygame.image.load("ressources/canon tourelle.png")
+		self.img_chassis_touche = pygame.image.load("ressources/chassis3_touche.png")
+		self.img_chassis_mort = pygame.image.load("ressources/chassis3_mort.png")
 		pygame.font.init()
 		pygame.mixer.pre_init(44100, -16, 1, 512) # a cause du delais
 		pygame.mixer.init()
@@ -49,12 +57,25 @@ class Robot():
 		self.sons.append(pygame.mixer.Sound(file='ressources/shot1.wav'))
 		self.sons.append(pygame.mixer.Sound(file='ressources/shot2.wav'))
 		self.sons.append(pygame.mixer.Sound(file='ressources/shot3.wav'))
-		self.son_touched = pygame.mixer.Sound(file='ressources/mort.wav')
+		for sound in self.sons:
+			sound.set_volume(0.1)
+		self.son_touched = pygame.mixer.Sound(file='ressources/touched.wav')
+		self.son_touched.set_volume(0.1)
 		self.son_vie = pygame.mixer.Sound(file='ressources/vie.wav')
+		self.son_vie.set_volume(0.1)
+		
+		print(pygame.surfarray.get_arraytype())
+		print(pygame.surfarray.get_arraytypes())
 		
 		
-	
+
 	def afficher(self):
+		# self.img_chassis = self.portrait.actualiser()
+		# self.img_chassis = pygame.surfarray.make_surface(self.img_chassis)
+		# self.img_chassis = pygame.transform.rotate(self.img_chassis, 270)
+		# self.portrait.actualiser()
+		# self.img_chassis = pygame.image.load("ressources/img.png").convert_alpha()
+		# self.img_chassis = pygame.transform.scale(self.img_chassis, (300, 200))
 		self.afficher_nom()
 		self.afficher_vie()
 		self.afficher_chassis()
@@ -77,19 +98,20 @@ class Robot():
 	def afficher_chassis(self):
 		x, y = self.position
 		if time() - self.t_touche < 0.05:
-			self.game_display.blit(img_chassis_touche, (x-25, y-25))
+			self.game_display.blit(self.img_chassis_touche, (x-25, y-25))
 		elif not self.alive:
-			self.game_display.blit(img_chassis_mort, (x-25, y-25))
+			self.game_display.blit(self.img_chassis_mort, (x-25, y-25))
 		else:
-			self.game_display.blit(img_chassis, (x-25, y-25))
+			w, h = pygame.Surface.get_size(self.img_chassis)
+			self.game_display.blit(self.img_chassis, (x-w/2, y-h/2))
 		
 	def afficher_canon(self):
 		largeur = 10
 		longueur = self.longueur
 		x, y = self.position
 		#image avec canon centre - plus simple !!!!!
-		w, h = pygame.Surface.get_size(img_canon3)
-		canon = pygame.transform.rotate(img_canon3, 360-degrees(self.angle_canon))
+		w, h = pygame.Surface.get_size(self.img_canon3)
+		canon = pygame.transform.rotate(self.img_canon3, 360-degrees(self.angle_canon))
 		canon_x, canon_y = pygame.Surface.get_size(canon)
 		self.game_display.blit(canon, (x-canon_x/2, y-canon_y/2))
 		
@@ -151,7 +173,7 @@ class Robot():
 			x, y = self.position
 			x_canon = int(self.longueur*cos(self.angle_canon))
 			y_canon = int(self.longueur*sin(self.angle_canon))
-			self.projectiles.append(Projectile(self.game_display, (x+x_canon, y+y_canon), self.angle_canon))
+			self.projectiles.append(self.type_projectile(self.game_display, (x+x_canon, y+y_canon), self.angle_canon))
 			#son
 			pygame.mixer.Sound.play(self.sons[randrange(len(self.sons))])
 			self.dernier_tir = time()
