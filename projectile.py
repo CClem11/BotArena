@@ -3,7 +3,7 @@
 #pour le projectile
 import pygame, threading
 from math import cos, sin, radians, degrees
-from time import sleep
+from time import sleep, time
 from random import randrange
 
 def couleur_aleatoire():
@@ -51,3 +51,22 @@ class Projectile():
 		# x -= w/2
 		# y -= h/2
 		# self.game_display.blit(img, (x, y))
+	
+class Explosion():
+	
+	def __init__(self, game_display, position, img):
+		self.game_display, self.position = game_display, position
+		x, y = position
+		w, h = pygame.Surface.get_size(img)
+		self.img = img
+		self.position = (x-w/2, y-h/2)
+		self.temps_explosion = 0.5
+		self.t0 = time()
+		
+	def afficher(self):
+		if time() - self.t0 > self.temps_explosion:
+			self.game_display.blit(self.img, self.position)
+			return True
+		else:
+			return False
+		

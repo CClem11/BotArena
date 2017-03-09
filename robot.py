@@ -3,32 +3,23 @@ import pygame
 from math import acos, degrees, cos, sin, tan, pi
 from random import randrange
 from time import time
-from projectile import *
-from webcam import *
+from projectile import Projectile
+# from webcam import *
+from collision import *
+from math_jeu import angle, decoupage_deplacement
 
-
-
-def angle(p1, p2):
-	x1, y1 = p1
-	x2, y2 = p2
-	distance = ((x2-x1)**2+(y2-y1)**2)**(1/2.)
-	angle = acos((x2-x1)/(distance))
-	if (y2-y1)/distance < 0:
-		angle = angle * -1
-	return angle
 
 class Robot():
-	def __init__(self, game_display, position_initiale, name="Player 1"):
+	def __init__(self, game_display, map, position_initiale, name="Player 1"):
 		self.name = name
 		self.game_display = game_display
+		self.fenetre = pygame.display.get_surface().get_size()
+		self.map = map
 		#print("Dimension de la map pour robot:", pygame.display.get_surface().get_size())
-		self.position = position_initiale
+		self.position = list(position_initiale)
 		self.color = (100, 100, 250)
-		self.deplacement_up = 0
-		self.deplacement_down = 0
-		self.deplacement_right = 0
-		self.deplacement_left = 0
-		self.vitesse_deplacement = 15
+		self.deplacement = {"Up":0, "Down":0, "Left":0, "Right":0, }
+		self.vitesse_deplacement = 18 # pixel/frame
 		self.t_touche = 0
 		self.projectiles = []
 		self.vie = 100
@@ -37,13 +28,13 @@ class Robot():
 		self.dernier_tir = 0
 		self.longueur = 55
 		self.temps_rechargement = 0 # secondes
-		self.angle_canon = 0
-		self.rayon = 25
-		self.type_projectile = Projectile
+		self.angle_canon = 0 #en debut de partie
+		self.type_projectile = Projectile #bientot SnipProj ...
 		#images
 		self.img_chassis = pygame.image.load("ressources/chassis3.png")
+		self.rayon = int(pygame.Surface.get_size(self.img_chassis)[0]/2)
 		########
-		self.portrait = Portrait()
+		# self.portrait = Portrait()
 		# self.img_chassis = pygame.image.load("ressources/img.png").convert_alpha()
 		# self.img_chassis = pygame.transform.scale(self.img_chassis, (300, 200))
 		############
@@ -64,10 +55,9 @@ class Robot():
 		self.son_vie = pygame.mixer.Sound(file='ressources/vie.wav')
 		self.son_vie.set_volume(0.1)
 		
-		print(pygame.surfarray.get_arraytype())
-		print(pygame.surfarray.get_arraytypes())
-		
-		
+		# print(pygame.surfarray.get_arraytype())
+		# print(pygame.surfarray.get_arraytypes())
+		# print(self.map)	
 
 	def afficher(self):
 		# self.img_chassis = self.portrait.actualiser()
@@ -81,11 +71,13 @@ class Robot():
 		self.afficher_chassis()
 		self.afficher_canon()
 		self.afficher_projectiles()
+		# self.afficher_aabb_hitbox()
 	
 	def afficher_nom(self):
 		x, y = self.position
 		font = pygame.font.SysFont("Arial Black", 15)
 		label = font.render(self.name, 1, (255,255,255))
+		# label = font.render(str(self.position), 1, (255,255,255))
 		largeur, hauteur = font.size(self.name)
 		self.game_display.blit(label, (x-largeur/2, y-self.rayon-30-hauteur))
 	
@@ -93,8 +85,11 @@ class Robot():
 		x, y = self.position
 		largeur = 50 # pixels
 		pygame.draw.rect(self.game_display, (0, 100, 0), (x-int(largeur/2), y-self.rayon-30, largeur, 10))
-		pygame.draw.rect(self.game_display, (0, 200, 0), (x-int(largeur/2), y-self.rayon-30+1, int((largeur*self.vie/100)), 10-1))		
-	
+		if self.alive:
+			pygame.draw.rect(self.game_display, (0, 200, 0), (x-int(largeur/2), y-self.rayon-30+1, int((largeur*self.vie/100)), 10-1))		
+		else:
+			pass
+		
 	def afficher_chassis(self):
 		x, y = self.position
 		if time() - self.t_touche < 0.05:
@@ -103,7 +98,13 @@ class Robot():
 			self.game_display.blit(self.img_chassis_mort, (x-25, y-25))
 		else:
 			w, h = pygame.Surface.get_size(self.img_chassis)
+			# print(w, h)
 			self.game_display.blit(self.img_chassis, (x-w/2, y-h/2))
+	
+	def afficher_aabb_hitbox(self):
+		x, y = self.position
+		r = self.rayon
+		pygame.draw.rect(self.game_display, (0, 255, 0), (x-r,y-r,r*2,r*2), 1)
 		
 	def afficher_canon(self):
 		largeur = 10
@@ -124,48 +125,85 @@ class Robot():
 		
 	def changer_vitesse(self, direction):
 		"deplacement du robot"
-		if direction == 'N':
-			self.deplacement_up = self.vitesse_deplacement
-		elif direction == 'S':
-			self.deplacement_down = self.vitesse_deplacement
-		if direction == 'W':
-			self.deplacement_left = self.vitesse_deplacement
-		elif direction == 'E':
-			self.deplacement_right = self.vitesse_deplacement
-	
-	def move(self):
-		# vitesse cheated en diagonale !
-		if self.alive == True:
-			x, y = self.position
-			delta_x = self.deplacement_right-self.deplacement_left
-			delta_y = self.deplacement_down-self.deplacement_up
-			if delta_x != 0 and delta_y != 0: # deplacement sur 2 axes
-				#print("Deplacement sur les 2 axes")
-				delta_x /= 2**(1/2.) #racine de 2
-				delta_y /= 2**(1/2.) #racine de 2
-			x += int(delta_x)
-			y += int(delta_y)
-			fenetre = pygame.display.get_surface().get_size()
-			if x - self.rayon <= 0 or x + self.rayon > fenetre[0]:
-				x = self.position[0]
-			if y - self.rayon <= 0 or y + self.rayon > fenetre[1]:
-				y = self.position[1]
-			self.position = (x, y)
-	
-	def orienter_canon(self, cible):
-		if self.canon_actif:
-			self.angle_canon = angle(self.position, cible)
+		self.deplacement[direction] = True
 	
 	def arreter(self, direction):
 		"mets les vitesses de deplacement en x et y a 0"
-		if direction == 'N':
-			self.deplacement_up = 0
-		elif direction == 'S':
-			self.deplacement_down = 0
-		if direction == 'W':
-			self.deplacement_left = 0
-		elif direction == 'E':
-			self.deplacement_right = 0
+		self.deplacement[direction] = False
+	
+	def move(self):
+		if self.alive == True:
+			x0, y0 = self.position
+			x, y = self.position
+			delta_x = self.deplacement["Right"]-self.deplacement["Left"]
+			delta_y = self.deplacement["Down"]-self.deplacement["Up"]
+			if delta_x != 0 or delta_y != 0: #déplacement
+				angle_deplacement = angle((0, 0,), (delta_x, delta_y))
+				partie_x_angle = int(self.vitesse_deplacement*cos(angle_deplacement))
+				partie_y_angle = int(self.vitesse_deplacement*sin(angle_deplacement))
+				#test de collision dans le mur (obstacle)
+				#faire du substeps !
+				deplacement_accorde = True
+				collision = False
+				points = decoupage_deplacement(self.position, (x+partie_x_angle, y+partie_y_angle), self.vitesse_deplacement)
+				for i, point in enumerate(points):
+					if not collision and not self.deplacement_possible(point):
+						if i != 0:
+							self.position = points[i-1]
+						# print(i)
+						collision = True
+						deplacement_accorde = False
+						break
+				# pour permettre le glissage sur obstacle
+				# on test egalement le déplacement pour la partie x uniquement, puis la partie y du mouvement
+				if delta_x and not deplacement_accorde:
+					collision = False
+					points = decoupage_deplacement(self.position, (x+delta_x*self.vitesse_deplacement, y), self.vitesse_deplacement)
+					for i, point in enumerate(points):
+						if not collision and not self.deplacement_possible(point):
+							if i != 0:
+								self.position = points[i-1]
+							collision = True
+							break
+					if i+1 == self.vitesse_deplacement:
+						#pas de collision : deplacement accepte
+						self.position = (x+partie_x_angle, y)
+				# puis en y
+				if delta_y and not deplacement_accorde:
+					collision = False
+					points = decoupage_deplacement(self.position, (x, y+delta_y*self.vitesse_deplacement), self.vitesse_deplacement)
+					for i, point in enumerate(points):
+						if not collision and not self.deplacement_possible(point):
+							if i != 0:
+								self.position = points[i-1]
+							collision = True
+							break
+					if i+1 == self.vitesse_deplacement:
+						#pas de collision : deplacement accepte
+						self.position = (x, y+partie_y_angle)
+				#aucune collision :
+				if not collision and deplacement_accorde:
+					print("aucune collision")
+					self.position = (x+partie_x_angle, y+partie_y_angle)
+					
+	def deplacement_possible(self, position_voulu):
+		"test si il n'y a pas collision avec la nouvelle position"
+		x_voulu, y_voulu = position_voulu
+		if x_voulu - self.rayon <= 0 or x_voulu + self.rayon > self.fenetre[0]:
+			return False
+		elif y_voulu - self.rayon <= 0 or y_voulu + self.rayon > self.fenetre[1]:
+			return False
+		#dans fenetre -> test de collision avec la map
+		for rectangle in self.map:
+			x1, y1, x2, y2 = rectangle
+			aabb = (x1, y1, x2-x1, y2-y1)
+			if Cercle_AABB((x_voulu, y_voulu), self.rayon, aabb, self.game_display):
+				return False
+		return True
+				
+	def orienter_canon(self, cible):
+		if self.canon_actif:
+			self.angle_canon = angle(self.position, cible)
 			
 	def tir(self):
 		if time() - self.dernier_tir > self.temps_rechargement:
