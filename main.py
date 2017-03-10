@@ -1,20 +1,28 @@
 # -*- coding:utf8 -*-
+import pygame
+pygame.init()
+from projectile import Explosion
 from robot import *
 from random import randrange
 import socket, sys
 from reception_client import *
 from charger_map import *
+from math_jeu import *
+from collision import Point_AABB
+from time import time
 HOST, PORT = "", 35
 mode = input("Choisir le mode (Tapez quelque chose -> Serveur; Entrée -> Client):")
 
-background = ["bg2.jpg", "bg3.jpg", "bg4.jpg", "bg5.jpg"]
+background = ["bg2.jpg", "bg4.jpg", "bg5.jpg"]
 #background = background[int(input("Quel image de background ? (entre 0 et {}):".format(len(background)-1)))]
 background = background[randrange(len(background))]
+
+
 
 class Joueur():	
 	def __init__(self, mode=""):
 		self.mode = mode
-		if mode != "test":
+		if not "test" in mode:
 			self.mysocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			try:
 				if len(mode) > 0:
@@ -34,23 +42,31 @@ class Joueur():
 			except Exception as e:
 				print(e)
 				sys.exit()
-
+		
 		self.fps = 60
-		self.fenetre = (700, 800)
-		
+		self.fenetre = (1600, 900)
+				#Pygame initialisation
 		self.clock = pygame.time.Clock()
-		# self.game_display = pygame.display.set_mode(self.fenetre)
-		self.game_display = pygame.display.set_mode((1600, 900),pygame.FULLSCREEN)
-		pygame.display.set_caption("Arene") # title
+		if "fenetre" in mode:
+			self.fenetre = (1000, 550)
+			self.game_display = pygame.display.set_mode(self.fenetre)
+		else:
+			self.game_display = pygame.display.set_mode(self.fenetre, pygame.FULLSCREEN)
 		
-		self.robot_joueur = Robot(self.game_display, (150, 150), "Moi")
+		pygame.display.set_caption("Bot/Tank Arena") # title
+		
+		#Creation de la Map
+		nombre_bloc = 32
+		self.taille_mur = int(self.fenetre[0]/nombre_bloc) #pixels
+		self.map = Map(self.game_display, self.fenetre, self.taille_mur)
+		self.map_pixel = self.map.get_map()
+		position_initiale1 = self.taille_mur, self.taille_mur
+		position_initiale2 = self.fenetre[0]-self.taille_mur, self.fenetre[1]-self.taille_mur
+		self.robot_joueur = Robot(self.game_display, self.map_pixel, position_initiale1, "Moi")
 		self.tir = False
-		self.robot_adversaire = Robot(self.game_display, (1450, 750), "Robbie")
-		if mode != "test":
+		self.robot_adversaire = Robot(self.game_display, self.map_pixel, position_initiale2, "Robbie")
+		if "test" not in mode:
 			ActualiserRobot(self.connexion_adversaire, self.robot_adversaire) # va mettre a jour la position de l'adversaire et autre parametres
-		#chargement de la map
-		self.map = ouvrir_map(map2)
-		self.img_obstacle = pygame.image.load("ressources/mur.png").convert_alpha()
 		
 		#lancement de la boucle principale
 		self.main()
@@ -67,6 +83,7 @@ class Joueur():
 					x, y = robot_cible.position
 					if (x_p - x)**2 + (y_p - y)**2 < robot_cible.rayon**2: #distance du projectile au robot < rayon du robot ?
 						robot_cible.toucher()
+						self.explosion.nouvelle_explosion(projectile.position)
 						projectiles.remove(projectile)
 		#test entre projectile et obstacles
 		self.collision_map()
@@ -78,22 +95,21 @@ class Joueur():
 			for projectile in projectiles:
 				x_p, y_p = projectile.position
 				r_p = projectile.rayon
-				for x, y in self.map.keys():
-					cote = 100 # pixel de l'image mur
-					x, y = x*100, y*100
-					if x < x_p < x + cote and y < y_p < y + cote: #dans l'image mur
+				for x, y, x1, y1 in self.map.get_map():
+					if x < x_p < x1 and y < y_p < y1: #dans l'image mur
+						self.explosion.nouvelle_explosion(projectile.position)
 						projectiles.remove(projectile)
+						
 		
 	def afficher_robots(self):
-		self.robot_joueur.afficher()
-		self.robot_adversaire.afficher()
+		self.robot_joueur.afficher(visible=True)
+		self.robot_adversaire.afficher(visible=self.adversaire_visible)
 	
 	def afficher_map(self):
-		for position in self.map.keys():
-			x, y = position
-			x *= 100
-			y *= 100
-			self.game_display.blit(self.img_obstacle, (x, y))
+		self.map.afficher()
+	
+	def afficher_explosions(self):
+		self.explosion.afficher()
 	
 	def fin(self):
 		pygame.quit()
@@ -102,8 +118,10 @@ class Joueur():
 	def main(self):
 		global background
 		background = pygame.image.load("ressources/"+background).convert_alpha()
-
+		self.explosion = Explosion(self.game_display)
 		position_souris = (0, 0)
+		fps = 0
+		self.adversaire_visible = True
 		while True:
 			for event in pygame.event.get():
 				if event.type == pygame.QUIT:
@@ -112,13 +130,13 @@ class Joueur():
 					if event.key == pygame.K_ESCAPE:
 						self.fin()
 					if event.key == pygame.K_DOWN:
-						self.robot_joueur.changer_vitesse('S')
+						self.robot_joueur.changer_vitesse('Down')
 					elif event.key == pygame.K_UP:
-						self.robot_joueur.changer_vitesse('N')
+						self.robot_joueur.changer_vitesse('Up')
 					elif event.key == pygame.K_LEFT:
-						self.robot_joueur.changer_vitesse('W')
+						self.robot_joueur.changer_vitesse('Left')
 					elif event.key == pygame.K_RIGHT:
-						self.robot_joueur.changer_vitesse('E')
+						self.robot_joueur.changer_vitesse('Right')
 					elif event.key == pygame.K_SPACE:
 						self.robot_joueur.tir()
 						self.tir = True
@@ -133,28 +151,37 @@ class Joueur():
 					
 				if event.type == pygame.KEYUP:
 					if event.key == pygame.K_DOWN:
-						self.robot_joueur.arreter('S')
+						self.robot_joueur.arreter('Down')
 					elif event.key == pygame.K_UP:
-						self.robot_joueur.arreter('N')
+						self.robot_joueur.arreter('Up')
 					elif event.key == pygame.K_LEFT:
-						self.robot_joueur.arreter('W')
+						self.robot_joueur.arreter('Left')
 					elif event.key == pygame.K_RIGHT:
-						self.robot_joueur.arreter('E')
+						self.robot_joueur.arreter('Right')
 				if event.type == pygame.MOUSEMOTION:
 					position_souris = event.pos
 			
-			if self.mode != "test":
+			if not "test" in mode:
 				self.envoyer_informations_serveur()
 			self.robot_joueur.orienter_canon(position_souris)		
-			self.robot_joueur.move()
-			self.collision()
+			
 			#self.game_display.fill((0, 0, 0))
 			self.game_display.blit(background, (0, 0))
+			
+			self.robot_joueur.move()
+			self.collision()
+			if fps%10 == 0:
+				self.spot()
 			self.afficher_map()
 			self.afficher_robots()
+			self.afficher_explosions()
 			pygame.display.update()
+			# pygame.display.flip()
 			self.clock.tick(self.fps)
-	
+			fps += 1
+			if fps > self.fps-1:
+				fps = 0
+			
 	def get_informations(self):
 		"retourne toutes les informations relatives au robot (joueur)"
 		infos = self.robot_joueur.get_informations()
@@ -167,7 +194,22 @@ class Joueur():
 	
 	def envoyer_informations_serveur(self):
 		message = self.get_informations()
-		self.connexion_adversaire.send(message.encode('Utf8'))	
+		self.connexion_adversaire.send(message.encode('Utf8'))
+	
+	def spot(self):
+		"detect si adversaire visible ou non"
+		# print("test spot")
+		x1, y1 = self.robot_joueur.position
+		x2, y2 = self.robot_adversaire.position
+		ligne = decoupage_deplacement((x1, y1), (x2, y2), int(distance(x1, y1, x2, y2)/30))
+		for point in ligne:
+			for rectangle in self.map_pixel:
+				x1, y1, x2, y2 = rectangle
+				if Point_AABB(point, (x1, y1, x2-x1, y2-y1)):
+					self.adversaire_visible = False
+					return False
+		self.adversaire_visible = True
+		return True
 		
 if __name__ == '__main__':
 	Joueur(mode)

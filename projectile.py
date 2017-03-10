@@ -3,7 +3,7 @@
 #pour le projectile
 import pygame, threading
 from math import cos, sin, radians, degrees
-from time import sleep
+from time import sleep, time
 from random import randrange
 
 def couleur_aleatoire():
@@ -51,3 +51,51 @@ class Projectile():
 		# x -= w/2
 		# y -= h/2
 		# self.game_display.blit(img, (x, y))
+	
+class Explosion():
+	
+	def __init__(self, game_display,):
+		self.game_display = game_display
+		self.img = pygame.image.load("ressources/explosion2.png").convert_alpha()
+		self.img = pygame.transform.scale(self.img, (50, 50))
+		self.w, self.h = pygame.Surface.get_size(self.img)
+		self.temps_explosion = 0.15
+		
+		self.explosions = []
+		
+	def afficher(self):
+		for explosion in self.explosions:
+			position, t0 = explosion
+			if time() - t0 < self.temps_explosion:
+				x, y = position
+				self.game_display.blit(self.img, (x-self.w/2, y-self.h/2))
+			else:
+				self.explosions.remove(explosion)
+				
+	def nouvelle_explosion(self, position):
+		self.explosions.append((position, time()))
+
+#copie
+class Fumee():
+	def __init__(self, game_display,):
+		self.game_display = game_display
+		self.img = pygame.image.load("ressources/fumee_tir.png").convert_alpha()
+		self.img = pygame.transform.scale(self.img, (50, 50))
+		self.w, self.h = pygame.Surface.get_size(self.img)
+		self.temps_tir = 0.05
+		self.tirs = []
+		
+	def afficher(self):
+		for tir in self.tirs:
+			position, agle, t0, img = tir
+			if time() - t0 < self.temps_tir:
+				self.game_display.blit(img, position)
+			else:
+				self.tirs.remove(tir)
+				
+	def nouvelle_fumee(self, position, angle_radian):
+		img = pygame.transform.rotate(self.img, 360-degrees(angle_radian))
+		x, y = position
+		w, h = pygame.Surface.get_size(img)
+		position = (x-w/2, y-h/2)
+		self.tirs.append((position, angle_radian, time(), img))	

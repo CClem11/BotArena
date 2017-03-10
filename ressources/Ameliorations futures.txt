@@ -1,3 +1,5 @@
+Menu du démarrage : choix des classes (Francois)
+
 des images cool pour le chassis et le canon et projectiles ?
 ->changer la hit box ?
 
@@ -13,3 +15,7 @@ explosion graphique
 Classes : Beam (sniper), eclaireur, Elastator (rebonds), ninja (invisible, shuriken, corps a corps)
 
 Objets : heal, bouclier, invisible, vitesse
+
+Spot : OPTIMISATION !!!
+
+déplacement physique : acceleration...
