@@ -1,6 +1,7 @@
 from __future__ import print_function
 # -*- coding:utf8 -*-
 from builtins import input
+print("lol")
 import pygame
 pygame.init()
 from projectile import Explosion
