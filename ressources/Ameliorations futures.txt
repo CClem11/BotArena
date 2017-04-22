@@ -1,9 +1,19 @@
+Menu du démarrage : choix des classes (Francois)
+
+music arrière plan
+
+bug de déplacement lors d'un glissage sur obstacle
+
+Quand 2 joueurs n'ont pas la même résolution il ne se voient pas au même endroit
+
+changer tir dans communication
+
+finir minimap
+
 des images cool pour le chassis et le canon et projectiles ?
 ->changer la hit box ?
 
 (quand mouvement + tir : dispersion augmente) pas pour l'instant
-
-obstacle (creation de map) -> lags ?
 
 ajouter des bandes sonnores pour faire participer d'autres personnes ^^ 
 (explosion, debut du jeu, message encouragement, message d'explication, mort)
@@ -13,3 +23,15 @@ explosion graphique
 Classes : Beam (sniper), eclaireur, Elastator (rebonds), ninja (invisible, shuriken, corps a corps)
 
 Objets : heal, bouclier, invisible, vitesse
+
+taille de fenetre automatique : pygame.init() -> pygame.display.Info()
+
+objets du jeu : utilisation des sprites
+
+#mode de jeu (Léo) : 2 joueurs sur même ordi
+-map labyrinthe, orientation canon fixe + item rotation canon, "f" pour tirer 
+
+OPTIMISATION : fps passent de 50 a 40 en affichant l'image de fond
+
+#même principe mais 4 joueurs sur 2 ordi (ou 4 ordi), 2vs2
+item pour changer de team

@@ -1,0 +1,3 @@
+substeps pour éviter un déplacement trop grand
+
+faire en sorte de pouvoir glisser contre un mur
